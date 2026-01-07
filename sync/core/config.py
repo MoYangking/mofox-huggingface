@@ -35,6 +35,7 @@ DEFAULT_TARGETS = (
                 "home/user/MaiBot-Adapter/config.toml",          # 适配器配置
                 # NapCat 配置与 QQ 数据
                 "app/napcat/config/",                            # NapCat 配置
+                "home/user/config/",                             # NapCat 配置
                 "app/.config/QQ/",                               # QQ 本体数据
                 # 其他
                 "home/user/nginx/admin_config.json",             # 路由管理配置
