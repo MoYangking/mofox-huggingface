@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync 管理器</title>
+    <!-- Element Plus CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <!-- Dark Mode CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/theme-chalk/dark/css-vars.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a1a;
+            color: #e5eaf3;
+        }
+        #app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .el-container {
+            height: 100%;
+        }
+        .el-header {
+            background-color: #1e1e20;
+            border-bottom: 1px solid #363637;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            height: 60px;
+        }
+        .logo {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #409eff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .el-aside {
+            background-color: #1e1e20;
+            border-right: 1px solid #363637;
+            transition: width 0.3s;
+        }
+        .el-main {
+            background-color: #141414;
+            padding: 20px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .status-item {
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-label {
+            color: #909399;
+        }
+        .status-value {
+            font-family: monospace;
+            font-weight: bold;
+        }
+        .console-output {
+            background-color: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .mb-4 { margin-bottom: 1rem; }
+        .mr-2 { margin-right: 0.5rem; }
+        .w-full { width: 100%; }
+        
+        /* Mobile Adaptations */
+        @media (max-width: 768px) {
+            .el-aside {
+                display: none;
+            }
+            .el-header {
+                padding: 0 10px;
+            }
+            .logo span {
+                display: none;
+            }
+            .el-main {
+                padding: 10px;
+            }
+            .mobile-menu-btn {
+                display: inline-flex !important;
+            }
+        }
+        @media (min-width: 769px) {
+            .mobile-menu-btn {
+                display: none !important;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #363637; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4c4c4d; 
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <el-container>
+            <el-header>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <el-button class="mobile-menu-btn" icon="Menu" circle @click="drawerVisible = true"></el-button>
+                    <div class="logo">
+                        <el-icon><Data-Analysis /></el-icon>
+                        <span>Sync 管理器</span>
+                    </div>
+                </div>
+                <div>
+                    <el-tag v-if="status.ready" type="success" effect="dark" size="small">就绪</el-tag>
+                    <el-tag v-else type="warning" effect="dark" size="small">未就绪</el-tag>
+                </div>
+            </el-header>
+            <el-container>
+                <!-- Desktop Sidebar -->
+                <el-aside width="220px">
+                    <el-menu
+                        :default-active="currentView"
+                        background-color="#1e1e20"
+                        text-color="#fff"
+                        active-text-color="#409eff"
+                        style="border-right: none;"
+                        @select="handleMenuSelect">
+                        <el-menu-item index="1">
+                            <el-icon><Odometer /></el-icon>
+                            <span>概览 & 操作</span>
+                        </el-menu-item>
+                        <el-menu-item index="2">
+                            <el-icon><Setting /></el-icon>
+                            <span>配置管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="3">
+                            <el-icon><Files /></el-icon>
+                            <span>LFS 管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="4">
+                            <el-icon><List /></el-icon>
+                            <span>Git 日志 & 文件</span>
+                        </el-menu-item>
+                    </el-menu>
+                </el-aside>
+
+                <!-- Mobile Drawer Menu -->
+                <el-drawer
+                    v-model="drawerVisible"
+                    title="菜单"
+                    direction="ltr"
+                    size="240px"
+                    :with-header="false">
+                    <div style="padding: 20px; font-size: 1.2rem; font-weight: 600; color: #409eff; display: flex; align-items: center; gap: 10px;">
+                        <el-icon><Data-Analysis /></el-icon> Sync 管理器
+                    </div>
+                    <el-menu
+                        :default-active="currentView"
+                        background-color="transparent"
+                        text-color="#fff"
+                        active-text-color="#409eff"
+                        style="border-right: none;"
+                        @select="handleMenuSelect">
+                        <el-menu-item index="1">
+                            <el-icon><Odometer /></el-icon>
+                            <span>概览 & 操作</span>
+                        </el-menu-item>
+                        <el-menu-item index="2">
+                            <el-icon><Setting /></el-icon>
+                            <span>配置管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="3">
+                            <el-icon><Files /></el-icon>
+                            <span>LFS 管理</span>
+                        </el-menu-item>
+                        <el-menu-item index="4">
+                            <el-icon><List /></el-icon>
+                            <span>Git 日志 & 文件</span>
+                        </el-menu-item>
+                    </el-menu>
+                </el-drawer>
+
+                <el-main>
+                    <!-- View 1: Dashboard -->
+                    <div v-if="currentView === '1'">
+                        <el-row :gutter="20">
+                            <el-col :xs="24" :sm="24" :md="16" :lg="16" :xl="16">
+                                <el-card class="mb-4">
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>常用操作</span>
+                                            <el-button type="primary" link @click="loadStatus"><el-icon><Refresh /></el-icon> 刷新</el-button>
+                                        </div>
+                                    </template>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        <el-button type="primary" @click="doAction('/sync/api/sync-now', '立即同步')" :loading="loading">立即同步</el-button>
+                                        <el-button type="success" @click="doAction('/sync/api/push', '仅推送')" :loading="loading">仅推送</el-button>
+                                        <el-button type="warning" @click="doAction('/sync/api/pull', '仅拉取')" :loading="loading">仅拉取</el-button>
+                                        <el-button type="info" @click="doAction('/sync/api/relink', '重新链接')" :loading="loading">重新链接</el-button>
+                                        <el-button @click="doAction('/sync/api/track-empty', '跟踪空目录')" :loading="loading">跟踪空目录</el-button>
+                                        <el-popconfirm title="确定要执行初始化吗？" @confirm="doInit">
+                                            <template #reference>
+                                                <el-button type="danger" :loading="loading">初始化</el-button>
+                                            </template>
+                                        </el-popconfirm>
+                                        <el-popconfirm title="确定要强制重置吗？" @confirm="doReset">
+                                            <template #reference>
+                                                <el-button type="danger" plain :loading="loading">重置</el-button>
+                                            </template>
+                                        </el-popconfirm>
+                                    </div>
+                                </el-card>
+
+                                <el-card class="mb-4">
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>系统日志</span>
+                                            <el-button type="info" link size="small" @click="logs = []">清空</el-button>
+                                        </div>
+                                    </template>
+                                    <div class="console-output" ref="consoleRef">
+                                        <div v-for="(log, index) in logs" :key="index">
+                                            <span style="color: #888;">[{{ log.time }}]</span> {{ log.msg }}
+                                        </div>
+                                        <div v-if="logs.length === 0" style="color: #666;">暂无日志...</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                            <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
+                                <el-card class="mb-4">
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>状态信息</span>
+                                        </div>
+                                    </template>
+                                    <div class="status-item">
+                                        <span class="status-label">Git 初始化</span>
+                                        <el-tag :type="status.git_initialized ? 'success' : 'danger'" size="small">{{ status.git_initialized ? '是' : '否' }}</el-tag>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">未提交变更</span>
+                                        <el-tag :type="status.dirty ? 'warning' : 'success'" size="small">{{ status.dirty ? '是' : '否' }}</el-tag>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">分支</span>
+                                        <span class="status-value">{{ status.branch }}</span>
+                                    </div>
+                                    <el-divider content-position="left">HEAD 信息</el-divider>
+                                    <div class="status-item">
+                                        <span class="status-label">本地</span>
+                                        <el-tooltip :content="status.head" placement="top">
+                                            <span class="status-value">{{ shortHash(status.head) }}</span>
+                                        </el-tooltip>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">远端</span>
+                                        <el-tooltip :content="status.remote_head" placement="top">
+                                            <span class="status-value">{{ shortHash(status.remote_head) }}</span>
+                                        </el-tooltip>
+                                    </div>
+                                    <div class="status-item">
+                                        <span class="status-label">状态</span>
+                                        <el-tag v-if="status.head === status.remote_head && status.head" type="success" size="small">已同步</el-tag>
+                                        <el-tag v-else-if="!status.head || !status.remote_head" type="info" size="small">未知</el-tag>
+                                        <el-tag v-else type="warning" size="small">不一致</el-tag>
+                                    </div>
+                                </el-card>
+                                <el-card>
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>路径配置</span>
+                                        </div>
+                                    </template>
+                                    <div class="status-item">
+                                        <span class="status-label">基础目录</span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #999; word-break: break-all; margin-bottom: 10px;">{{ status.base }}</div>
+                                    <div class="status-item">
+                                        <span class="status-label">历史目录</span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #999; word-break: break-all;">{{ status.hist_dir }}</div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- View 2: Configuration -->
+                    <div v-if="currentView === '2'">
+                        <el-row :gutter="20">
+                            <el-col :xs="24" :sm="24" :md="12">
+                                <el-card class="mb-4">
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>同步目标</span>
+                                            <el-button type="primary" size="small" @click="saveTargets" :loading="loading">保存</el-button>
+                                        </div>
+                                    </template>
+                                    <el-alert title="每行一个，相对 BASE 目录" type="info" :closable="false" class="mb-4" show-icon></el-alert>
+                                    <el-input
+                                        v-model="targetsText"
+                                        :rows="15"
+                                        type="textarea"
+                                        placeholder="输入同步目标路径..."
+                                    />
+                                </el-card>
+                            </el-col>
+                            <el-col :xs="24" :sm="24" :md="12">
+                                <el-card>
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>黑名单</span>
+                                            <el-button type="primary" size="small" @click="saveExcludes" :loading="loading">保存</el-button>
+                                        </div>
+                                    </template>
+                                    <el-alert title="每行一个，相对 HIST_DIR 目录" type="info" :closable="false" class="mb-4" show-icon></el-alert>
+                                    <el-input
+                                        v-model="excludesText"
+                                        :rows="15"
+                                        type="textarea"
+                                        placeholder="输入黑名单路径..."
+                                    />
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- View 3: LFS Management -->
+                    <div v-if="currentView === '3'">
+                        <el-card class="mb-4">
+                            <template #header>
+                                <div class="card-header">
+                                    <span>LFS 操作</span>
+                                    <el-tag v-if="lfsStatus.enabled" type="success">已启用</el-tag>
+                                    <el-tag v-else type="info">未启用</el-tag>
+                                </div>
+                            </template>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                                <el-button type="primary" @click="lfsScan" :loading="loading">扫描</el-button>
+                                <el-button type="success" @click="lfsUpload" :loading="loading">上传</el-button>
+                                <el-button type="warning" @click="lfsRestore" :loading="loading">恢复</el-button>
+                                <el-button type="info" @click="lfsList" :loading="loading">刷新</el-button>
+                            </div>
+                            
+                            <el-descriptions title="配置信息" :column="1" border class="hidden-md-and-up">
+                                <el-descriptions-item label="阈值">{{ (lfsStatus.threshold / 1024 / 1024).toFixed(0) }} MB</el-descriptions-item>
+                                <el-descriptions-item label="Release">{{ lfsStatus.release_tag }}</el-descriptions-item>
+                                <el-descriptions-item label="版本数">{{ lfsStatus.max_versions }}</el-descriptions-item>
+                                <el-descriptions-item label="并发">{{ lfsStatus.max_workers }}</el-descriptions-item>
+                            </el-descriptions>
+                            <el-descriptions title="配置信息" :column="4" border class="hidden-sm-and-down">
+                                <el-descriptions-item label="阈值">{{ (lfsStatus.threshold / 1024 / 1024).toFixed(0) }} MB</el-descriptions-item>
+                                <el-descriptions-item label="Release">{{ lfsStatus.release_tag }}</el-descriptions-item>
+                                <el-descriptions-item label="版本数">{{ lfsStatus.max_versions }}</el-descriptions-item>
+                                <el-descriptions-item label="并发">{{ lfsStatus.max_workers }}</el-descriptions-item>
+                            </el-descriptions>
+                        </el-card>
+
+                        <el-card v-if="lfsFiles.length > 0 || lfsScanResult">
+                            <template #header>
+                                <div class="card-header">
+                                    <span>文件列表</span>
+                                </div>
+                            </template>
+                            
+                            <!-- Scan Result -->
+                            <div v-if="lfsScanResult" class="mb-4">
+                                <el-alert
+                                    v-if="lfsScanResult.count === 0"
+                                    :title="`未发现大于 ${lfsScanResult.threshold_mb} MB 的文件`"
+                                    type="success"
+                                    show-icon
+                                    :closable="false">
+                                </el-alert>
+                                <el-alert
+                                    v-else
+                                    :title="`发现 ${lfsScanResult.count} 个大文件`"
+                                    type="warning"
+                                    show-icon
+                                    :closable="false">
+                                    <ul style="margin: 5px 0 0 20px;">
+                                        <li v-for="f in lfsScanResult.files" :key="f">{{ f }}</li>
+                                    </ul>
+                                </el-alert>
+                            </div>
+
+                            <!-- Managed Files List -->
+                            <el-table :data="lfsFiles" style="width: 100%" stripe border v-if="lfsFiles.length > 0">
+                                <el-table-column prop="path" label="路径" sortable min-width="150"></el-table-column>
+                                <el-table-column label="哈希" width="100" class-name="hidden-xs-only">
+                                    <template #default="scope">
+                                        <el-tag size="small" type="info">{{ scope.row.current_hash }}</el-tag>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="大小" width="100" sortable :sort-method="(a,b) => parseFloat(a.size) - parseFloat(b.size)">
+                                    <template #default="scope">
+                                        {{ scope.row.size }}
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-card>
+                    </div>
+
+                    <!-- View 4: Git Logs & Files -->
+                    <div v-if="currentView === '4'">
+                        <el-row :gutter="20">
+                            <el-col :xs="24" :sm="24" :md="14">
+                                <el-card class="mb-4">
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>最近提交</span>
+                                            <el-button type="primary" link @click="loadGitLogs"><el-icon><Refresh /></el-icon> 刷新</el-button>
+                                        </div>
+                                    </template>
+                                    <el-timeline>
+                                        <el-timeline-item
+                                            v-for="(activity, index) in gitLogs"
+                                            :key="index"
+                                            :timestamp="activity.date"
+                                            placement="top">
+                                            <el-card>
+                                                <h4>{{ activity.message }}</h4>
+                                                <p>{{ activity.author }} <el-tag size="small" type="info">{{ activity.hash }}</el-tag></p>
+                                            </el-card>
+                                        </el-timeline-item>
+                                    </el-timeline>
+                                </el-card>
+                            </el-col>
+                            <el-col :xs="24" :sm="24" :md="10">
+                                <el-card>
+                                    <template #header>
+                                        <div class="card-header">
+                                            <span>文件列表</span>
+                                            <el-button type="primary" link @click="loadRepoFiles"><el-icon><Refresh /></el-icon> 刷新</el-button>
+                                        </div>
+                                    </template>
+                                    <div style="max-height: 600px; overflow-y: auto;">
+                                        <div v-for="file in repoFiles" :key="file" style="padding: 4px 0; border-bottom: 1px solid #333; font-size: 13px;">
+                                            <el-icon style="margin-right: 5px; vertical-align: middle;"><Document /></el-icon>
+                                            {{ file }}
+                                        </div>
+                                        <div v-if="repoFiles.length === 0" style="color: #666; text-align: center; padding: 20px;">暂无文件</div>
+                                    </div>
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+                </el-main>
+            </el-container>
+        </el-container>
+    </div>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Element Plus -->
+    <script src="https://unpkg.com/element-plus"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+
+    <script>
+        const { createApp, ref, onMounted, reactive, computed } = Vue;
+
+        const app = createApp({
+            setup() {
+                const currentView = ref('1');
+                const loading = ref(false);
+                const drawerVisible = ref(false);
+                const logs = ref([]);
+                const consoleRef = ref(null);
+                
+                const status = reactive({
+                    base: '',
+                    hist_dir: '',
+                    branch: '',
+                    repo: '',
+                    targets: [],
+                    excludes: [],
+                    ready: false,
+                    git_initialized: false,
+                    dirty: false,
+                    head: '',
+                    remote_head: ''
+                });
+
+                const targetsText = ref('');
+                const excludesText = ref('');
+
+                const lfsStatus = reactive({
+                    enabled: false,
+                    threshold: 0,
+                    release_tag: '',
+                    max_versions: 0,
+                    max_workers: 0
+                });
+                const lfsFiles = ref([]);
+                const lfsScanResult = ref(null);
+
+                const gitLogs = ref([]);
+                const repoFiles = ref([]);
+
+                const addLog = (msg) => {
+                    const time = new Date().toLocaleTimeString();
+                    logs.value.push({ time, msg });
+                    // Auto scroll
+                    setTimeout(() => {
+                        if (consoleRef.value) {
+                            consoleRef.value.scrollTop = consoleRef.value.scrollHeight;
+                        }
+                    }, 100);
+                };
+
+                const shortHash = (hash) => {
+                    if (!hash) return '-';
+                    return hash.substring(0, 7);
+                };
+
+                const handleMenuSelect = (index) => {
+                    currentView.value = index;
+                    drawerVisible.value = false; // Close drawer on mobile
+                    if (index === '3') {
+                        loadLfsStatus();
+                        lfsList();
+                    } else if (index === '4') {
+                        loadGitLogs();
+                        loadRepoFiles();
+                    }
+                };
+
+                const loadStatus = async () => {
+                    try {
+                        const res = await fetch('/sync/api/status');
+                        const data = await res.json();
+                        Object.assign(status, data);
+                        
+                        if (Array.isArray(data.targets)) targetsText.value = data.targets.join('\n');
+                        if (Array.isArray(data.excludes)) excludesText.value = data.excludes.join('\n');
+                        
+                        addLog('状态已更新');
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('获取状态失败: ' + e.message);
+                        addLog('Error: ' + e.message);
+                    }
+                };
+
+                const post = async (url, body) => {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body ? JSON.stringify(body) : undefined
+                    });
+                    return res.json();
+                };
+
+                const doAction = async (url, name) => {
+                    loading.value = true;
+                    addLog(`开始执行: ${name}...`);
+                    try {
+                        const res = await post(url);
+                        if (res.ok) {
+                            ElementPlus.ElMessage.success(`${name} 成功`);
+                            addLog(`${name} 成功`);
+                            if (res.written !== undefined) {
+                                addLog(`写入了 ${res.written} 个 .gitkeep 文件`);
+                            }
+                            await loadStatus();
+                        } else {
+                            throw new Error(res.error || '未知错误');
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error(`${name} 失败: ${e.message}`);
+                        addLog(`${name} 失败: ${e.message}`);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const doInit = () => doAction('/sync/api/init', '初始化');
+                const doReset = () => doAction('/sync/api/reset', '强制重置');
+
+                const saveTargets = async () => {
+                    loading.value = true;
+                    try {
+                        const lines = targetsText.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                        const res = await post('/sync/api/targets', { targets: lines });
+                        if (res.ok) {
+                            ElementPlus.ElMessage.success('同步目标已保存');
+                            addLog('同步目标已保存');
+                            await loadStatus();
+                        } else {
+                            throw new Error(res.error);
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('保存失败: ' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const saveExcludes = async () => {
+                    loading.value = true;
+                    try {
+                        const lines = excludesText.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                        const res = await post('/sync/api/excludes', { excludes: lines });
+                        if (res.ok) {
+                            ElementPlus.ElMessage.success('黑名单已保存');
+                            addLog('黑名单已保存');
+                            await loadStatus();
+                        } else {
+                            throw new Error(res.error);
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('保存失败: ' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // LFS Functions
+                const loadLfsStatus = async () => {
+                    try {
+                        const res = await fetch('/sync/api/lfs/status');
+                        const data = await res.json();
+                        Object.assign(lfsStatus, data);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const lfsScan = async () => {
+                    loading.value = true;
+                    lfsScanResult.value = null;
+                    addLog('开始扫描大文件...');
+                    try {
+                        const res = await post('/sync/api/lfs/scan');
+                        if (res.ok) {
+                            lfsScanResult.value = res;
+                            addLog(`扫描完成，发现 ${res.count} 个大文件`);
+                        } else {
+                            throw new Error(res.error);
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('扫描失败: ' + e.message);
+                        addLog('扫描失败: ' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const lfsUpload = async () => {
+                    await doAction('/sync/api/lfs/upload', '上传大文件');
+                };
+
+                const lfsRestore = () => doAction('/sync/api/lfs/restore', '恢复 LFS 文件');
+
+                const lfsList = async () => {
+                    loading.value = true;
+                    try {
+                        const res = await fetch('/sync/api/lfs/list');
+                        const data = await res.json();
+                        if (data.ok) {
+                            lfsFiles.value = data.files;
+                        } else {
+                            throw new Error(data.error);
+                        }
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('获取 LFS 列表失败: ' + e.message);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                // New API Functions
+                const loadGitLogs = async () => {
+                    try {
+                        const res = await fetch('/sync/api/logs');
+                        const data = await res.json();
+                        if (data.ok) {
+                            gitLogs.value = data.logs;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                const loadRepoFiles = async () => {
+                    try {
+                        const res = await fetch('/sync/api/files');
+                        const data = await res.json();
+                        if (data.ok) {
+                            repoFiles.value = data.files;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                };
+
+                onMounted(() => {
+                    loadStatus();
+                });
+
+                return {
+                    currentView,
+                    loading,
+                    drawerVisible,
+                    logs,
+                    consoleRef,
+                    status,
+                    targetsText,
+                    excludesText,
+                    lfsStatus,
+                    lfsFiles,
+                    lfsScanResult,
+                    gitLogs,
+                    repoFiles,
+                    handleMenuSelect,
+                    loadStatus,
+                    doAction,
+                    doInit,
+                    doReset,
+                    saveTargets,
+                    saveExcludes,
+                    lfsScan,
+                    lfsUpload,
+                    lfsRestore,
+                    lfsList,
+                    loadGitLogs,
+                    loadRepoFiles,
+                    shortHash
+                };
+            }
+        });
+
+        // Register Icons
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component);
+        }
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>
