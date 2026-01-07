@@ -79,10 +79,17 @@ RUN git clone https://github.com/Mai-with-u/MaiBot-Napcat-Adapter.git /home/user
 RUN git clone https://github.com/MaiM-with-u/MaiMBot-LPMM.git /home/user/MaiMBot-LPMM && \
     chown -R 1000:1000 /home/user/MaiMBot-LPMM
 
-# Create MaiBot data dirs
-RUN mkdir -p /home/user/MaiBot-Core/data && chown -R 1000:1000 /home/user/MaiBot-Core/data
-RUN mkdir -p /home/user/MaiBot-Adapter/data && chown -R 1000:1000 /home/user/MaiBot-Adapter/data
+# Create MaiBot-Core directories (对应 docker-compose volumes)
+RUN mkdir -p /home/user/MaiBot-Core/data && \
+    mkdir -p /home/user/MaiBot-Core/config && \
+    mkdir -p /home/user/MaiBot-Core/plugins && \
+    mkdir -p /home/user/MaiBot-Core/logs && \
+    touch /home/user/MaiBot-Core/maibot_statistics.html && \
+    chown -R 1000:1000 /home/user/MaiBot-Core
 
+# Create MaiBot-Adapter directories
+RUN mkdir -p /home/user/MaiBot-Adapter/data && \
+    chown -R 1000:1000 /home/user/MaiBot-Adapter
 
 
 # 1. Create venv and install base tools

@@ -19,19 +19,26 @@ DEFAULT_BRANCH = os.environ.get("GIT_BRANCH", "main")
 
 # Targets are relative to BASE; mirrors under HIST_DIR preserving path components
 # Directories should end with / to distinguish from files
+# 根据 docker-compose.yml volumes 配置同步目标
 DEFAULT_TARGETS = (
     os.environ.get(
         "SYNC_TARGETS",
         " ".join(
             [
-                "home/user/config/",
-                "app/napcat/config/",
-                "home/user/nginx/admin_config.json",
-                "app/.config/QQ/",
-                "home/user/filebrowser-data/filebrowser.db",
-                "home/user/MaiBot-Core/data/",
-                "home/user/MaiBot-Core/config/",
-                "home/user/MaiBot-Adapter/data/",
+                # MaiBot-Core 配置与数据
+                "home/user/MaiBot-Core/config/",                 # 配置目录
+                "home/user/MaiBot-Core/data/",                   # 数据目录
+                "home/user/MaiBot-Core/plugins/",                # 插件目录
+                "home/user/MaiBot-Core/maibot_statistics.html",  # 统计报告
+                # MaiBot-Adapter 配置与数据
+                "home/user/MaiBot-Adapter/data/",                # 适配器数据
+                "home/user/MaiBot-Adapter/config.toml",          # 适配器配置
+                # NapCat 配置与 QQ 数据
+                "app/napcat/config/",                            # NapCat 配置
+                "app/.config/QQ/",                               # QQ 本体数据
+                # 其他
+                "home/user/nginx/admin_config.json",             # 路由管理配置
+                "home/user/filebrowser-data/filebrowser.db",     # FileBrowser 数据库
             ]
         ),
     )

@@ -13,10 +13,15 @@ export HOME="/app"
 export XDG_CONFIG_HOME="/app/.config"
 mkdir -p /app/.config/QQ /app/napcat/config || true
 
+# Chrome/Electron sandbox flags for Docker environment
+# --no-sandbox: Disable Chrome sandbox (required in Docker without proper suid setup)
+# --disable-gpu: Disable GPU acceleration (not available in most Docker envs)
+CHROME_FLAGS="--no-sandbox --disable-gpu"
+
 # Try AppImage extract-and-run first for correct runtime env
 if [ -x /home/user/QQ.AppImage ]; then
-  exec /home/user/QQ.AppImage --appimage-extract-and-run ${NAPCAT_FLAGS:-}
+  exec /home/user/QQ.AppImage --appimage-extract-and-run ${CHROME_FLAGS} ${NAPCAT_FLAGS:-}
 fi
 
 # Fallback to extracted AppRun
-exec /home/user/napcat/AppRun ${NAPCAT_FLAGS:-}
+exec /home/user/napcat/AppRun ${CHROME_FLAGS} ${NAPCAT_FLAGS:-}
