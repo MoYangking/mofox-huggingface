@@ -67,6 +67,13 @@
       "action": "proxy",
       "id": "proxy-filebrowser",
       "priority": 180
+    },
+    {
+      "match": { "path_prefix": "/t" },
+      "backend": "http://127.0.0.1:8080",
+      "action": "proxy",
+      "id": "proxy-gotty",
+      "priority": 180
     }
   ]
 }
