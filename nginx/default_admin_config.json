@@ -69,12 +69,27 @@
       "priority": 180
     },
     {
-      "match": { "path_prefix": "/t" },
+      "match": { "path_equal": "/filebrowser" },
+      "redirect_to": "/filebrowser/",
+      "action": "redirect",
+      "id": "redirect-filebrowser-slash",
+      "priority": 200
+    },
+    {
+      "match": { "path_equal": "/t" },
+      "redirect_to": "/t/",
+      "action": "redirect",
+      "id": "redirect-t-slash",
+      "priority": 200
+    },
+    {
+      "match": { "path_prefix": "/t/" },
       "backend": "http://127.0.0.1:8080",
       "action": "proxy",
       "id": "proxy-gotty",
       "priority": 180
     }
+
   ]
 }
 
